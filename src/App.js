@@ -134,14 +134,25 @@ const App = () => {
 
   useEffect(() => {
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const frustumSize = 8; 
+    const aspect = window.innerWidth / window.innerHeight;
+    const camera = new THREE.OrthographicCamera(
+      -frustumSize * aspect / 2, 
+      frustumSize * aspect / 2,  
+      frustumSize / 2,           
+      -frustumSize / 2,          
+      0.1,                       
+      1000                       
+    );
+
+    camera.position.set(0, 0, window.innerWidth / 2);
+    camera.lookAt(10, 0, 0);
+
     const renderer = new THREE.WebGLRenderer({ canvas: canvasRef.current });
     renderer.setSize(window.innerWidth, window.innerHeight);
 
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
-
-    camera.position.z = length;
 
     const createAxisLineWithStrips = (start, end, color, unitLength = 1, stripLength = 0.1) => {
       // Create the main axis line
@@ -244,7 +255,6 @@ const App = () => {
     const createVectorArrow = (vector, color) => {
       const dir = vector.clone().normalize(); 
       const length = vector.length(); 
-      const shaftRadius = 0.5;
       const arrowHelper = new THREE.ArrowHelper(dir, new THREE.Vector3(0, 0, 0), length, color, 0.3, 0.2);
       scene.add(arrowHelper);
       return arrowHelper;
@@ -293,6 +303,8 @@ const App = () => {
         ...createComponentLines(initialVectorT, 0xffffff),
         ...createComponentLines(transformedVectorT, 0xffffff),
       ];
+    }else{
+      vectorBreakdownLines = [];
     }
 
     // Animation loop
@@ -306,76 +318,77 @@ const App = () => {
     // Cleanup on component unmount
     return () => {
       if (showGrid) scene.remove(gridX, gridY, gridZ); // Remove grids
-      vectorBreakdownLines.forEach((line) => scene.remove(line));
+      if(showVectorBreakDown) vectorBreakdownLines.forEach((line) => scene.remove(line));
       scene.remove(initialVectorArrow, transformedVectorArrow);
       renderer.dispose();
     };
-  }, [vector, matrix, showGrid, showLabels, transformedVector]); 
+  }, [vector, matrix, showGrid, showLabels, transformedVector, showVectorBreakDown]); 
   
   
 
   return (
     <div className="d-flex">
-       {/* Notification */}
-       {notification && (
+      {/* Notification */}
+      {notification && (
         <div
           className={`alert alert-${notification.type} position-fixed top-0 start-50 translate-middle-x mt-3`}
-          style={{ zIndex: 1060 }} // Ensure it's on top
+          style={{ zIndex: 1060 }}
           role="alert"
         >
           {notification.message}
         </div>
       )}
-      <div className="bg-light border-end vh-100 p-3 collapse show" id="sidebar" >
-          <h3 className="mb-3">Vector Transformation</h3>
-          <hr />
 
-          {/* Vector Input */}
-          <div className="d-flex align-items-center mb-3">
-            <h5 className="me-2 mb-0">v&#8407;</h5>
-            <input
-              type="text"
-              value={inputVector.toString()}
-              onChange={(e) => setInputVector(e.target.value)}
-              className="form-control"
-              ref={vectorInputRef} 
-              placeholder="x,y,z"
-            />
-          </div>
+      {/* Sidebar */}
+      <div className="bg-light border-end vh-100 p-3 collapse show" id="sidebar">
+        <h3 className="mb-3">Vector Transformation</h3>
+        <hr />
 
-          {/* Matrix Input */}
-          <div className="d-flex align-items-center mb-3">
-            <h5 className="me-2 mb-0">&#x22A4;</h5>
-            <input
-              type="text"
-              value={inputMatrix}
-              onChange={(e) => setInputMatrix(e.target.value)}
-              className="form-control"
-              placeholder="m11,m12,m13,...,m33"
-              ref={matrixInputRef}
-            />
-          </div>
+        {/* Vector Input */}
+        <div className="d-flex align-items-center mb-3">
+          <h5 className="me-2 mb-0">v&#8407;</h5>
+          <input
+            type="text"
+            value={inputVector.toString()}
+            onChange={(e) => setInputVector(e.target.value)}
+            className="form-control"
+            ref={vectorInputRef}
+            placeholder="x,y,z"
+          />
+        </div>
 
-          {/* Submit Button */}
-          <button onClick={performTransformation} className="btn btn-success w-100 mb-3">
-            Transform
-          </button>
+        {/* Matrix Input */}
+        <div className="d-flex align-items-center mb-3">
+          <h5 className="me-2 mb-0">&#x22A4;</h5>
+          <input
+            type="text"
+            value={inputMatrix}
+            onChange={(e) => setInputMatrix(e.target.value)}
+            className="form-control"
+            placeholder="m11,m12,m13,...,m33"
+            ref={matrixInputRef}
+          />
+        </div>
 
-          {/* Divider */}
-          <hr />
+        {/* Submit Button */}
+        <button onClick={performTransformation} className="btn btn-success w-100 mb-3">
+          Transform
+        </button>
 
-          {/* Display Results */}
-          <MathDisplay 
-            vector={vector} 
-            matrix={matrix} 
-            transformedVector={transformedVector}
-            />
+        {/* Divider */}
+        <hr />
+
+        {/* Display Results */}
+        <MathDisplay
+          vector={vector}
+          matrix={matrix}
+          transformedVector={transformedVector}
+        />
       </div>
 
-
-      {/* Toggle Button */}
+      {/* Toggle Sidebar Button */}
       <button
-        className="btn btn-primary position-absolute"
+        className="btn btn-primary position-fixed"
         style={{ bottom: '10px', left: '10px', zIndex: 1050 }}
         data-bs-toggle="collapse"
         data-bs-target="#sidebar"
@@ -383,11 +396,113 @@ const App = () => {
         <i className="bi bi-list"></i>
       </button>
 
+      {/* Settings Button */}
+      <button
+        className="btn btn-secondary position-fixed"
+        style={{ bottom: '10px', right: '10px', zIndex: 1050 }}
+        data-bs-toggle="modal"
+        data-bs-target="#settingsModal"
+      >
+        <i className="bi bi-gear"></i>
+      </button>
+
       {/* Main Canvas */}
       <div className="flex-grow-1">
         <canvas ref={canvasRef} className="w-100" />
       </div>
+
+      {/* Settings Modal */}
+      <div
+        className="modal fade custom-modal"
+        id="settingsModal"
+        tabIndex="-1"
+        aria-labelledby="settingsModalLabel"
+        aria-hidden="true"
+      >
+      <div className="modal-dialog modal-dialog-centered">
+        <div className="modal-content">
+          <div className="modal-header">
+            <h5 className="modal-title" id="settingsModalLabel">Settings</h5>
+            <button
+              type="button"
+              className="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Close"
+            ></button>
+          </div>
+          <div className="modal-body">
+            <form>
+              {/* Checkbox for Grid */}
+              <div className="form-check">
+                <input
+                  type="checkbox"
+                  className="form-check-input"
+                  id="showGridCheckbox"
+                  checked={showGrid}
+                  onChange={(e) => setShowGrid(e.target.checked)}
+                />
+                <label className="form-check-label" htmlFor="showGridCheckbox">
+                  Show Grid
+                </label>
+              </div>
+
+              {/* Checkbox for Transformed Grid */}
+              <div className="form-check">
+                <input
+                  type="checkbox"
+                  className="form-check-input"
+                  id="showTransformedGridCheckbox"
+                  checked={showTransformedGrid}
+                  onChange={(e) => setShowTransformedGrid(e.target.checked)}
+                />
+                <label className="form-check-label" htmlFor="showTransformedGridCheckbox">
+                  Show Transformed Grid
+                </label>
+              </div>
+
+              {/* Checkbox for Labels */}
+              <div className="form-check">
+                <input
+                  type="checkbox"
+                  className="form-check-input"
+                  id="showLabelsCheckbox"
+                  checked={showLabels}
+                  onChange={(e) => setShowLabels(e.target.checked)}
+                />
+                <label className="form-check-label" htmlFor="showLabelsCheckbox">
+                  Show Labels
+                </label>
+              </div>
+
+              {/* Checkbox for Vector Breakdown */}
+              <div className="form-check">
+                <input
+                  type="checkbox"
+                  className="form-check-input"
+                  id="showVectorBreakDownCheckbox"
+                  checked={showVectorBreakDown}
+                  onChange={(e) => setShowVectorBreakDown(e.target.checked)}
+                />
+                <label className="form-check-label" htmlFor="showVectorBreakDownCheckbox">
+                  Show Vector Breakdown
+                </label>
+              </div>
+            </form>
+          </div>
+          <div className="modal-footer">
+            <button
+              type="button"
+              className="btn btn-secondary"
+              data-bs-dismiss="modal"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
+  </div>
+  
   );
 };
 
