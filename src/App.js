@@ -11,7 +11,7 @@ import MathDisplay from './components/MathDisplay';
 const App = () => {
   const canvasRef = useRef(null);
   const [unit, setUnit] = useState(1);
-  const [axisLength, setAxisLength] = useState(10);
+  const [length, setLength] = useState(10);
   const [vector, setVector] = useState({ x: 1, y: 2, z: 1 });
   const [matrix, setMatrix] = useState({
     m11: 1, m12: 0, m13: 0,
@@ -32,7 +32,8 @@ const App = () => {
   // state for toggling grid and labels
   const [showGrid, setShowGrid] = useState(true); 
   const [showTransformedGrid, setShowTransformedGrid] = useState(true);
-  const [showLabels, setShowLabels] = useState(true); 
+  const [showLabels, setShowLabels] = useState(true);
+  const [showVectorBreakDown, setShowVectorBreakDown] = useState(true);
 
   const showNotification = (message, type = 'danger') => {
     setNotification({ message, type });
@@ -105,30 +106,30 @@ const App = () => {
     return true;
   };
 
-const performTransformation = (e) => {
-  if (validateVector(inputVector) && validateMatrix(inputMatrix)) {
-    const parsedVector = parseVectorInput(inputVector);
-    const parsedMatrix = parseMatrixInput(inputMatrix);
+  const performTransformation = (e) => {
+    if (validateVector(inputVector) && validateMatrix(inputMatrix)) {
+      const parsedVector = parseVectorInput(inputVector);
+      const parsedMatrix = parseMatrixInput(inputMatrix);
 
-    // Use parsed inputs directly for transformation
-    let vt = new THREE.Vector3(parsedVector.x, parsedVector.y, parsedVector.z);
-    const transformationMatrix = new THREE.Matrix4().set(
-      parsedMatrix.m11, parsedMatrix.m12, parsedMatrix.m13, 0,
-      parsedMatrix.m21, parsedMatrix.m22, parsedMatrix.m23, 0,
-      parsedMatrix.m31, parsedMatrix.m32, parsedMatrix.m33, 0,
-      0, 0, 0, 1
-    );
+      // Use parsed inputs directly for transformation
+      let vt = new THREE.Vector3(parsedVector.x, parsedVector.y, parsedVector.z);
+      const transformationMatrix = new THREE.Matrix4().set(
+        parsedMatrix.m11, parsedMatrix.m12, parsedMatrix.m13, 0,
+        parsedMatrix.m21, parsedMatrix.m22, parsedMatrix.m23, 0,
+        parsedMatrix.m31, parsedMatrix.m32, parsedMatrix.m33, 0,
+        0, 0, 0, 1
+      );
 
-    const ut = vt.clone().applyMatrix4(transformationMatrix);
+      const ut = vt.clone().applyMatrix4(transformationMatrix);
 
-    // Update state after transformation
-    setVector(parsedVector);
-    setMatrix(parsedMatrix);
-    setTransformedVector({ x: ut.x, y: ut.y, z: ut.z });
+      // Update state after transformation
+      setVector(parsedVector);
+      setMatrix(parsedMatrix);
+      setTransformedVector({ x: ut.x, y: ut.y, z: ut.z });
 
-    showNotification('Transformation successful.', 'success');
-  }
-};
+      showNotification('Transformation successful.', 'success');
+    }
+  };
 
 
   useEffect(() => {
@@ -140,14 +141,42 @@ const performTransformation = (e) => {
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
 
-    camera.position.z = 10;
+    camera.position.z = length;
 
-    // Function to create axis lines (thicker and extended in both directions)
-    const createAxisLine = (start, end, color) => {
+    const createAxisLineWithStrips = (start, end, color, unitLength = 1, stripLength = 0.1) => {
+      // Create the main axis line
       const geometry = new THREE.BufferGeometry().setFromPoints([start, end]);
-      const material = new THREE.LineBasicMaterial({ color, linewidth: 3 });
+      const material = new THREE.LineBasicMaterial({ color });
       const line = new THREE.Line(geometry, material);
       scene.add(line);
+    
+      // Calculate direction of the axis
+      const direction = new THREE.Vector3().subVectors(end, start).normalize();
+      const length = start.distanceTo(end);
+    
+      // Define a perpendicular vector for strip calculation
+      const arbitraryVector = new THREE.Vector3(0, 0, 1);
+      if (Math.abs(direction.z) > 0.99) {
+        arbitraryVector.set(1, 0, 0); // Switch if aligned with the X-axis
+      }
+      
+      const perpendicular = new THREE.Vector3().crossVectors(direction, arbitraryVector).normalize().multiplyScalar(stripLength);
+    
+      // Iterate through each unit interval to draw strips
+      for (let i = 0; i <= length; i += unitLength) {
+        const pointOnAxis = start.clone().add(direction.clone().multiplyScalar(i));
+    
+        // Create the strip line geometry (perpendicular to the axis)
+        const stripGeometry = new THREE.BufferGeometry().setFromPoints([
+          pointOnAxis.clone().add(perpendicular),
+          pointOnAxis.clone().sub(perpendicular),
+        ]);
+        const stripMaterial = new THREE.LineBasicMaterial({ color });
+        const stripLine = new THREE.Line(stripGeometry, stripMaterial);
+    
+        scene.add(stripLine); 
+      }
+    
       return line;
     };
 
@@ -177,6 +206,40 @@ const performTransformation = (e) => {
       return gridHelper;
     };
 
+    const createComponentLines = (vector, color) => {
+      const componentX = new THREE.Vector3(vector.x, 0, 0);
+      const componentY = new THREE.Vector3(0, vector.y, 0);
+      const componentZ = new THREE.Vector3(0, 0, vector.z);
+  
+      // Lines for the vector breakdown
+      const origin = new THREE.Vector3(0, 0, 0);
+      const xLine = new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints([origin, componentX]),
+        new THREE.LineBasicMaterial({ 
+          color ,
+          transparent: true, 
+          opacity: 0.5,
+        })
+      );
+      const yLine = new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints([componentX, componentX.clone().add(componentY)]),
+        new THREE.LineBasicMaterial({ 
+          color ,
+          transparent: true, 
+          opacity: 0.5, })
+      );
+      const zLine = new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints([componentX.clone().add(componentY), vector]),
+        new THREE.LineBasicMaterial({ 
+          color ,
+          transparent: true, 
+          opacity: 0.5, })
+      );
+  
+      scene.add(xLine, yLine, zLine);
+      return [xLine, yLine, zLine];
+    };
+
     // Function to create a vector with an arrow
     const createVectorArrow = (vector, color) => {
       const dir = vector.clone().normalize(); 
@@ -188,11 +251,11 @@ const performTransformation = (e) => {
     };
 
     // Create axes lines
-    const axisLength = 10;
+    const axisLength = length / unit;
     const axisColor = 0xffff00;
-    createAxisLine(new THREE.Vector3(-axisLength, 0, 0), new THREE.Vector3(axisLength, 0, 0), axisColor);
-    createAxisLine(new THREE.Vector3(0, -axisLength, 0), new THREE.Vector3(0, axisLength, 0), axisColor);
-    createAxisLine(new THREE.Vector3(0, 0, -axisLength), new THREE.Vector3(0, 0, axisLength), axisColor);
+    createAxisLineWithStrips(new THREE.Vector3(-axisLength, 0, 0), new THREE.Vector3(axisLength, 0, 0), axisColor);
+    createAxisLineWithStrips(new THREE.Vector3(0, -axisLength, 0), new THREE.Vector3(0, axisLength, 0), axisColor);
+    createAxisLineWithStrips(new THREE.Vector3(0, 0, -axisLength), new THREE.Vector3(0, 0, axisLength), axisColor);
 
     // Create grids if enabled
     let gridX, gridY, gridZ;
@@ -224,6 +287,14 @@ const performTransformation = (e) => {
       createAxisLabel("u", transformedVectorT.clone().multiplyScalar(0.5));
     }
 
+    let vectorBreakdownLines = [];
+    if (showVectorBreakDown) {
+      vectorBreakdownLines = [
+        ...createComponentLines(initialVectorT, 0xffffff),
+        ...createComponentLines(transformedVectorT, 0xffffff),
+      ];
+    }
+
     // Animation loop
     const animate = () => {
       requestAnimationFrame(animate);
@@ -235,6 +306,7 @@ const performTransformation = (e) => {
     // Cleanup on component unmount
     return () => {
       if (showGrid) scene.remove(gridX, gridY, gridZ); // Remove grids
+      vectorBreakdownLines.forEach((line) => scene.remove(line));
       scene.remove(initialVectorArrow, transformedVectorArrow);
       renderer.dispose();
     };
