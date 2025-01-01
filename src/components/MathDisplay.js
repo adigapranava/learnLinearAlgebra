@@ -1,8 +1,8 @@
 import React from "react";
 import MathJax from "react-mathjax";
-import MetrixDisplay from "./MetrixDisplay";
-import VectorDisplay from "./VectorDisplay";
-import TransformationDisplay from "./TransformationDisplay";
+import MetrixDisplay from "./MathDispay/MetrixDisplay";
+import VectorDisplay from "./MathDispay/VectorDisplay";
+import TransformationDisplay from "./MathDispay/TransformationDisplay";
 
 const MathDisplay = ({ vector, matrix, transformedVector }) => {
   if (!vector || !matrix || !transformedVector) {

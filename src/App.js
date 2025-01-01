@@ -6,7 +6,11 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import 'bootstrap/dist/css/bootstrap.min.css';
 import 'bootstrap/dist/js/bootstrap.bundle.min';
 import 'bootstrap-icons/font/bootstrap-icons.css'; // Import Bootstrap Icons
-import MathDisplay from './components/MathDisplay';
+
+import Notification from './components/Notification';
+import Sidebar from './components/SideBar';
+import SettingsModal from './components/SettingsModal';
+import { parseMatrixInput, parseVectorInput, validateMatrix, validateVector, multiplyVectorMatrix } from './utils/utils';
 
 const App = () => {
   const canvasRef = useRef(null);
@@ -30,106 +34,63 @@ const App = () => {
   const [notification, setNotification] = useState(null);
   
   // state for toggling grid and labels
-  const [showGrid, setShowGrid] = useState(true); 
-  const [showTransformedGrid, setShowTransformedGrid] = useState(true);
-  const [showLabels, setShowLabels] = useState(true);
-  const [showVectorBreakDown, setShowVectorBreakDown] = useState(true);
+  const [settings, setSettings] = useState({
+    showGrid: true,
+    showTransformedGrid: true,
+    showLabels: true,
+    showVectorBreakDown: true,
+  });
+
+  const handleSettingChange = (setting, value) => {
+    setSettings(prevSettings => ({
+      ...prevSettings,
+      [setting]: value,
+    }));
+  };
+
 
   const showNotification = (message, type = 'danger') => {
     setNotification({ message, type });
     setTimeout(() => {
       setNotification(null);
-    }, 5000); // Hide after 5 seconds
-  };
-
-  const parseVectorInput = (input) => {
-    const values = input.split(',').map((v) => parseFloat(v.trim()) || 0);
-    return { x: values[0] || 0, y: values[1] || 0, z: values[2] || 0 };
-  };
-
-  const parseMatrixInput = (input) => {
-    const values = input.split(',').map((v) => parseFloat(v.trim()) || 0);
-    return {
-      m11: values[0] || 0, m12: values[1] || 0, m13: values[2] || 0,
-      m21: values[3] || 0, m22: values[4] || 0, m23: values[5] || 0,
-      m31: values[6] || 0, m32: values[7] || 0, m33: values[8] || 0,
-    };
-  };
-
-  const validateVector = (input) => {
-    const values = input.split(',');
-    if (values.length !== 3) {
-      showNotification('Invalid vector input. Please enter 3 numerical values separated by commas.', 'danger');
-      setTimeout(() => { 
-        if (vectorInputRef.current) {
-          vectorInputRef.current.focus();
-        }
-      }, 0);
-      return false;
-    }
-    for (let i = 0; i < values.length; i++) {
-      if (isNaN(values[i])) {
-        showNotification('Invalid vector input. Please enter numerical values only.', 'danger');
-        setTimeout(() => { 
-          if (vectorInputRef.current) {
-            vectorInputRef.current.focus();
-          }
-        }, 0);
-        return false;
-      }
-    }
-    return true;
-  };
-
-  const validateMatrix = (input) => {
-    const values = input.split(',');
-    if (values.length !== 9) {
-      showNotification('Invalid matrix input. Please enter 9 values separated by commas.', 'danger');
-      setTimeout(() => {
-        if (matrixInputRef.current) {
-          matrixInputRef.current.focus();
-        }
-      }, 0);
-      return false;
-    }
-    for (let i = 0; i < values.length; i++) {
-      if (isNaN(values[i])) {
-        showNotification('Invalid matrix input. Please enter numerical values only.', 'danger');
-        setTimeout(() => {
-          if (matrixInputRef.current) {
-            matrixInputRef.current.focus();
-          }
-        }, 0);
-        return false;
-      }
-    }
-    return true;
+    }, 5000);
   };
 
   const performTransformation = (e) => {
-    if (validateVector(inputVector) && validateMatrix(inputMatrix)) {
-      const parsedVector = parseVectorInput(inputVector);
-      const parsedMatrix = parseMatrixInput(inputMatrix);
+    const validatedVector = validateVector(inputVector);
+    const validatedMatrix = validateMatrix(inputMatrix);
 
-      // Use parsed inputs directly for transformation
-      let vt = new THREE.Vector3(parsedVector.x, parsedVector.y, parsedVector.z);
-      const transformationMatrix = new THREE.Matrix4().set(
-        parsedMatrix.m11, parsedMatrix.m12, parsedMatrix.m13, 0,
-        parsedMatrix.m21, parsedMatrix.m22, parsedMatrix.m23, 0,
-        parsedMatrix.m31, parsedMatrix.m32, parsedMatrix.m33, 0,
-        0, 0, 0, 1
-      );
+    if (validatedVector && validatedMatrix) {
+        const parsedVector = parseVectorInput(inputVector);
+        const parsedMatrix = parseMatrixInput(inputMatrix);
+        const ut = multiplyVectorMatrix(parsedVector, parsedMatrix);
 
-      const ut = vt.clone().applyMatrix4(transformationMatrix);
+        // Update the vector and matrix states
+        setVector(parsedVector);
+        setMatrix(parsedMatrix);
+        setTransformedVector({ x: ut.x, y: ut.y, z: ut.z });
 
-      // Update state after transformation
-      setVector(parsedVector);
-      setMatrix(parsedMatrix);
-      setTransformedVector({ x: ut.x, y: ut.y, z: ut.z });
-
-      showNotification('Transformation successful.', 'success');
+        showNotification('Transformation successful.', 'success');
+    } else if (!validatedVector) { 
+        showNotification("Invalid vector input. Please enter 3 numerical values separated by commas.", "danger");
+        setTimeout(() => {
+            if (vectorInputRef.current) {
+                vectorInputRef.current.focus();
+            }
+        }, 0);
+    } else { 
+        showNotification("Invalid matrix input. Please enter 9 numerical values separated by commas.", "danger");
+        setTimeout(() => {
+            if (matrixInputRef.current) {
+                matrixInputRef.current.focus();
+            }
+        }, 0);
     }
-  };
+};
+
+  useEffect(() => {
+    setTransformedVector(multiplyVectorMatrix(vector, matrix));
+  },[]);
 
 
   useEffect(() => {
@@ -269,7 +230,7 @@ const App = () => {
 
     // Create grids if enabled
     let gridX, gridY, gridZ;
-    if (showGrid) {
+    if (settings.showGrid) {
       const gridSize = axisLength*2;
       const gridDivisions = 2 * axisLength;
       const gridColor = new THREE.Color(0x808080);
@@ -289,7 +250,7 @@ const App = () => {
     const transformedVectorT = new THREE.Vector3(transformedVector.x, transformedVector.y, transformedVector.z);
     const transformedVectorArrow = createVectorArrow(transformedVectorT, 0xff0000);
     // Add labels if enabled
-    if (showLabels) {
+    if (settings.showLabels) {
       createAxisLabel("X", new THREE.Vector3(axisLength + 0.5, 0, 0));
       createAxisLabel("Y", new THREE.Vector3(0, axisLength + 0.5, 0));
       createAxisLabel("Z", new THREE.Vector3(0, 0, axisLength + 0.5));
@@ -298,7 +259,7 @@ const App = () => {
     }
 
     let vectorBreakdownLines = [];
-    if (showVectorBreakDown) {
+    if (settings.showVectorBreakDown) {
       vectorBreakdownLines = [
         ...createComponentLines(initialVectorT, 0xffffff),
         ...createComponentLines(transformedVectorT, 0xffffff),
@@ -317,81 +278,29 @@ const App = () => {
 
     // Cleanup on component unmount
     return () => {
-      if (showGrid) scene.remove(gridX, gridY, gridZ); // Remove grids
-      if(showVectorBreakDown) vectorBreakdownLines.forEach((line) => scene.remove(line));
+      if (settings.showGrid) scene.remove(gridX, gridY, gridZ); // Remove grids
+      if(settings.showVectorBreakDown) vectorBreakdownLines.forEach((line) => scene.remove(line));
       scene.remove(initialVectorArrow, transformedVectorArrow);
       renderer.dispose();
     };
-  }, [vector, matrix, showGrid, showLabels, transformedVector, showVectorBreakDown]); 
+  }, [vector, matrix, settings, transformedVector]); 
   
   
 
   return (
     <div className="d-flex">
-      {/* Notification */}
-      {notification && (
-        <div
-          className={`alert alert-${notification.type} position-fixed top-0 start-50 translate-middle-x mt-3`}
-          style={{ zIndex: 1060 }}
-          role="alert"
-        >
-          {notification.message}
-        </div>
-      )}
+      {notification && <Notification message={notification.message} type={notification.type} />}
 
-      {/* Sidebar */}
-      <div className="bg-light border-end vh-100 p-3 collapse show" id="sidebar">
-        <h3 className="mb-3">Vector Transformation</h3>
-        <hr />
-        <form
-          onSubmit={(e) => {
-            e.preventDefault(); // Prevent page refresh
-            performTransformation(); // Trigger the transformation
-          }}
-        >
-          {/* Vector Input */}
-          <div className="d-flex align-items-center mb-3">
-            <h5 className="me-2 mb-0">v&#8407;</h5>
-            <input
-              type="text"
-              value={inputVector.toString()}
-              onChange={(e) => setInputVector(e.target.value)}
-              className="form-control"
-              ref={vectorInputRef}
-              placeholder="x,y,z"
-            />
-          </div>
+      <Sidebar
+        inputVector={inputVector}
+        setInputVector={setInputVector}
+        inputMatrix={inputMatrix}
+        setInputMatrix={setInputMatrix}
+        performTransformation={performTransformation}
+        vector={vector}
+        matrix={matrix}
+        transformedVector={transformedVector}/>
 
-          {/* Matrix Input */}
-          <div className="d-flex align-items-center mb-3">
-            <h5 className="me-2 mb-0">&#x22A4;</h5>
-            <input
-              type="text"
-              value={inputMatrix}
-              onChange={(e) => setInputMatrix(e.target.value)}
-              className="form-control"
-              placeholder="m11,m12,m13,...,m33"
-              ref={matrixInputRef}
-            />
-          </div>
-
-          {/* Submit Button */}
-          <button type="submit" onClick={performTransformation} className="btn btn-success w-100 mb-3">
-            Transform
-          </button>
-        </form>
-        {/* Divider */}
-        <hr />
-
-        {/* Display Results */}
-        <MathDisplay
-          vector={vector}
-          matrix={matrix}
-          transformedVector={transformedVector}
-        />
-      </div>
-
-      {/* Toggle Sidebar Button */}
       <button
         className="btn btn-primary position-fixed"
         style={{ bottom: '10px', left: '10px', zIndex: 1050 }}
@@ -401,7 +310,6 @@ const App = () => {
         <i className="bi bi-list"></i>
       </button>
 
-      {/* Settings Button */}
       <button
         className="btn btn-secondary position-fixed"
         style={{ bottom: '10px', right: '10px', zIndex: 1050 }}
@@ -411,101 +319,14 @@ const App = () => {
         <i className="bi bi-gear"></i>
       </button>
 
-      {/* Main Canvas */}
       <div className="flex-grow-1">
         <canvas ref={canvasRef} className="w-100" />
       </div>
 
-      {/* Settings Modal */}
-      <div
-        className="modal fade custom-modal"
-        id="settingsModal"
-        tabIndex="-1"
-        aria-labelledby="settingsModalLabel"
-        aria-hidden="true"
-      >
-      <div className="modal-dialog modal-dialog-centered">
-        <div className="modal-content">
-          <div className="modal-header">
-            <h5 className="modal-title" id="settingsModalLabel">Settings</h5>
-            <button
-              type="button"
-              className="btn-close"
-              data-bs-dismiss="modal"
-              aria-label="Close"
-            ></button>
-          </div>
-          <div className="modal-body">
-            <form>
-              {/* Checkbox for Grid */}
-              <div className="form-check">
-                <input
-                  type="checkbox"
-                  className="form-check-input"
-                  id="showGridCheckbox"
-                  checked={showGrid}
-                  onChange={(e) => setShowGrid(e.target.checked)}
-                />
-                <label className="form-check-label" htmlFor="showGridCheckbox">
-                  Show Grid
-                </label>
-              </div>
-
-              {/* Checkbox for Transformed Grid */}
-              <div className="form-check">
-                <input
-                  type="checkbox"
-                  className="form-check-input"
-                  id="showTransformedGridCheckbox"
-                  checked={showTransformedGrid}
-                  onChange={(e) => setShowTransformedGrid(e.target.checked)}
-                />
-                <label className="form-check-label" htmlFor="showTransformedGridCheckbox">
-                  Show Transformed Grid
-                </label>
-              </div>
-
-              {/* Checkbox for Labels */}
-              <div className="form-check">
-                <input
-                  type="checkbox"
-                  className="form-check-input"
-                  id="showLabelsCheckbox"
-                  checked={showLabels}
-                  onChange={(e) => setShowLabels(e.target.checked)}
-                />
-                <label className="form-check-label" htmlFor="showLabelsCheckbox">
-                  Show Labels
-                </label>
-              </div>
-
-              {/* Checkbox for Vector Breakdown */}
-              <div className="form-check">
-                <input
-                  type="checkbox"
-                  className="form-check-input"
-                  id="showVectorBreakDownCheckbox"
-                  checked={showVectorBreakDown}
-                  onChange={(e) => setShowVectorBreakDown(e.target.checked)}
-                />
-                <label className="form-check-label" htmlFor="showVectorBreakDownCheckbox">
-                  Show Vector Breakdown
-                </label>
-              </div>
-            </form>
-          </div>
-          <div className="modal-footer">
-            <button
-              type="button"
-              className="btn btn-secondary"
-              data-bs-dismiss="modal"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+      <SettingsModal
+        settings={settings}
+        handleSettingChange={handleSettingChange}
+      />
   </div>
   
   );
