@@ -16,11 +16,12 @@ import {
   createComponentLines,
   createVectorArrow,
 } from './utils/ThreeUtils';
+import COLORS from './utils/colors';
 
 const App = () => {
   const canvasRef = useRef(null);
-  const [unit, setUnit] = useState(1);
-  const [length, setLength] = useState(10);
+  const [unit, setUnit] = useState(5);
+  const [length, setLength] = useState(100);
   const [vector, setVector] = useState({ x: 1, y: 2, z: 1 });
   const [matrix, setMatrix] = useState({
     m11: 1, m12: 0, m13: 0,
@@ -104,32 +105,30 @@ const App = () => {
 
     // Create axes lines
     const axisLength = length / unit;
-    const axisColor = 0xffff00;
-    createAxisLineWithStrips(scene, new THREE.Vector3(-axisLength, 0, 0), new THREE.Vector3(axisLength, 0, 0), axisColor);
-    createAxisLineWithStrips(scene, new THREE.Vector3(0, -axisLength, 0), new THREE.Vector3(0, axisLength, 0), axisColor);
-    createAxisLineWithStrips(scene, new THREE.Vector3(0, 0, -axisLength), new THREE.Vector3(0, 0, axisLength), axisColor);
+    createAxisLineWithStrips(scene, new THREE.Vector3(-axisLength, 0, 0), new THREE.Vector3(axisLength, 0, 0), COLORS.axis);
+    createAxisLineWithStrips(scene, new THREE.Vector3(0, -axisLength, 0), new THREE.Vector3(0, axisLength, 0), COLORS.axis);
+    createAxisLineWithStrips(scene, new THREE.Vector3(0, 0, -axisLength), new THREE.Vector3(0, 0, axisLength), COLORS.axis);
 
     // Create grids if enabled
     let gridX, gridY, gridZ;
     if (settings.showGrid) {
       const gridSize = axisLength * 2;
       const gridDivisions = 2 * axisLength;
-      const gridColor = new THREE.Color(0x808080);
 
-      gridX = createGridMesh(scene, gridSize, gridDivisions, gridColor);
+      gridX = createGridMesh(scene, gridSize, gridDivisions, COLORS.grid);
       gridX.rotation.x = Math.PI / 2;
-      gridY = createGridMesh(scene, gridSize, gridDivisions, gridColor);
+      gridY = createGridMesh(scene, gridSize, gridDivisions, COLORS.grid);
       gridY.rotation.z = Math.PI / 2;
-      gridZ = createGridMesh(scene, gridSize, gridDivisions, gridColor);
+      gridZ = createGridMesh(scene, gridSize, gridDivisions, COLORS.grid);
       gridZ.rotation.y = Math.PI / 2;
     }
 
     // Create initial and transformed vectors
     const initialVector = new THREE.Vector3(vector.x, vector.y, vector.z);
-    const initialVectorArrow = createVectorArrow(scene, initialVector, 0x00ffff);
+    const initialVectorArrow = createVectorArrow(scene, initialVector, COLORS.vectorInitial);
 
     const transformedVectorT = new THREE.Vector3(transformedVector.x, transformedVector.y, transformedVector.z);
-    const transformedVectorArrow = createVectorArrow(scene, transformedVectorT, 0xff0000);
+    const transformedVectorArrow = createVectorArrow(scene, transformedVectorT, COLORS.vectorTransformed);
 
     // Add labels if enabled
     if (settings.showLabels) {
@@ -144,8 +143,8 @@ const App = () => {
     let vectorBreakdownLines = [];
     if (settings.showVectorBreakDown) {
       vectorBreakdownLines = [
-        ...createComponentLines(scene, initialVector, 0xffffff),
-        ...createComponentLines(scene, transformedVectorT, 0xffffff),
+        ...createComponentLines(scene, initialVector, COLORS.vectorBreakdown),
+        ...createComponentLines(scene, transformedVectorT, COLORS.vectorBreakdown),
       ];
     }
 
