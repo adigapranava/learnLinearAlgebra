@@ -9,7 +9,8 @@ const Sidebar = ({
   performTransformation,
   vector,
   matrix,
-  transformedVector
+  transformedVector,
+  units,
 }) => {
   const vectorInputRef = useRef(null);
   const matrixInputRef = useRef(null);
@@ -64,6 +65,9 @@ const Sidebar = ({
         matrix={matrix}
         transformedVector={transformedVector}
       />
+      <p>
+        * scale: {units} <br />
+      </p>
     </div>
   );
 };

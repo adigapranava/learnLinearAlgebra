@@ -57,4 +57,25 @@ const multiplyVectorMatrix = (vector, matrix) => {
   return ut;
 };
 
-export { parseVectorInput, parseMatrixInput, validateVector, validateMatrix, multiplyVectorMatrix };
+function calculateSpaceAndScale(vector1, vector2) {
+  // Combine all the values from both vectors
+  const values = [...Object.values(vector1), ...Object.values(vector2)];
+
+  // Calculate the range
+  const minValue = Math.min(...values);
+  const maxValue = Math.max(...values);
+  const range = maxValue - minValue;
+
+  // Determine the scale, ensuring a minimum of 10 units
+  const scale = Math.ceil(range / 10);
+
+  // Ensure the length of the space is at least 10 times the scale
+  const spaceLength = Math.max(10 * scale, range);
+
+  return {
+      scale: scale,
+      length: spaceLength
+  };
+}
+
+export { parseVectorInput, parseMatrixInput, validateVector, validateMatrix, multiplyVectorMatrix, calculateSpaceAndScale };

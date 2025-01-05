@@ -7,7 +7,7 @@ import 'bootstrap-icons/font/bootstrap-icons.css';
 import Notification from './components/Notification';
 import Sidebar from './components/SideBar';
 import SettingsModal from './components/SettingsModal';
-import { parseMatrixInput, parseVectorInput, validateMatrix, validateVector, multiplyVectorMatrix } from './utils/utils';
+import { parseMatrixInput, parseVectorInput, validateMatrix, validateVector, multiplyVectorMatrix, calculateSpaceAndScale} from './utils/utils';
 import { initializeThreeScene } from './utils/threeSetup';
 import {
   createAxisLineWithStrips,
@@ -20,8 +20,6 @@ import COLORS from './utils/colors';
 
 const App = () => {
   const canvasRef = useRef(null);
-  const [unit, setUnit] = useState(5);
-  const [length, setLength] = useState(100);
   const [vector, setVector] = useState({ x: 1, y: 2, z: 1 });
   const [matrix, setMatrix] = useState({
     m11: 1, m12: 0, m13: 0,
@@ -29,6 +27,9 @@ const App = () => {
     m31: 0, m32: 0, m33: 1,
   });
   const [transformedVector, setTransformedVector] = useState(vector);
+  let cal = calculateSpaceAndScale(vector, transformedVector);
+  const [unit, setUnit] = useState(cal.scale);
+  const [length, setLength] = useState(cal.length);
 
   // state for input fields
   const [inputVector, setInputVector] = useState(`${vector.x},${vector.y},${vector.z}`);
@@ -75,7 +76,9 @@ const App = () => {
         setVector(parsedVector);
         setMatrix(parsedMatrix);
         setTransformedVector({ x: ut.x, y: ut.y, z: ut.z });
-
+        let cal = calculateSpaceAndScale(vector, transformedVector);
+        setUnit(cal.scale);
+        setLength(cal.length);
         showNotification('Transformation successful.', 'success');
     } else if (!validatedVector) { 
         showNotification("Invalid vector input. Please enter 3 numerical values separated by commas.", "danger");
@@ -96,6 +99,9 @@ const App = () => {
 
   useEffect(() => {
     setTransformedVector(multiplyVectorMatrix(vector, matrix));
+    let cal = calculateSpaceAndScale(vector, transformedVector);
+    setUnit(cal.scale);
+    setLength(cal.length);
   },[]);
 
 
@@ -123,28 +129,40 @@ const App = () => {
       gridZ.rotation.y = Math.PI / 2;
     }
 
+    if (!settings.showTransformedGrid) {
+      const transformedGridSize = axisLength * 2;
+      const transformedGridDivisions = 2 * axisLength;
+
+      const transformedGridX = createGridMesh(scene, transformedGridSize, transformedGridDivisions, COLORS.gridTransformed);
+      transformedGridX.rotation.x = Math.PI / 4;
+      const transformedGridY = createGridMesh(scene, transformedGridSize, transformedGridDivisions, COLORS.gridTransformed);
+      transformedGridY.rotation.z = 3 * Math.PI / 4;
+      const transformedGridZ = createGridMesh(scene, transformedGridSize, transformedGridDivisions, COLORS.gridTransformed);
+      transformedGridZ.rotation.y = 5 * Math.PI / 4;
+    }
+
     // Create initial and transformed vectors
     const initialVector = new THREE.Vector3(vector.x, vector.y, vector.z);
-    const initialVectorArrow = createVectorArrow(scene, initialVector, COLORS.vectorInitial);
+    const initialVectorArrow = createVectorArrow(scene, unit, initialVector, COLORS.vectorInitial);
 
     const transformedVectorT = new THREE.Vector3(transformedVector.x, transformedVector.y, transformedVector.z);
-    const transformedVectorArrow = createVectorArrow(scene, transformedVectorT, COLORS.vectorTransformed);
+    const transformedVectorArrow = createVectorArrow(scene, unit, transformedVectorT, COLORS.vectorTransformed);
 
     // Add labels if enabled
     if (settings.showLabels) {
-      createAxisLabel(scene, "X", new THREE.Vector3(axisLength + 0.5, 0, 0));
-      createAxisLabel(scene, "Y", new THREE.Vector3(0, axisLength + 0.5, 0));
-      createAxisLabel(scene, "Z", new THREE.Vector3(0, 0, axisLength + 0.5));
-      createAxisLabel(scene, "v", initialVector.clone().multiplyScalar(0.5));
-      createAxisLabel(scene, "u", transformedVectorT.clone().multiplyScalar(0.5));
+      createAxisLabel(scene, unit, "X", new THREE.Vector3(axisLength + 0.5, 0, 0));
+      createAxisLabel(scene, unit, "Y", new THREE.Vector3(0, axisLength + 0.5, 0));
+      createAxisLabel(scene, unit, "Z", new THREE.Vector3(0, 0, axisLength + 0.5));
+      createAxisLabel(scene, unit, "v", initialVector.clone().multiplyScalar(0.5 / unit));
+      createAxisLabel(scene, unit, "u", transformedVectorT.clone().multiplyScalar(0.5 / unit));
     }
 
     // Create vector breakdowns if enabled
     let vectorBreakdownLines = [];
     if (settings.showVectorBreakDown) {
       vectorBreakdownLines = [
-        ...createComponentLines(scene, initialVector, COLORS.vectorBreakdown),
-        ...createComponentLines(scene, transformedVectorT, COLORS.vectorBreakdown),
+        ...createComponentLines(scene, unit, initialVector, COLORS.vectorBreakdown),
+        ...createComponentLines(scene, unit, transformedVectorT, COLORS.vectorBreakdown),
       ];
     }
 
@@ -179,7 +197,8 @@ const App = () => {
         performTransformation={performTransformation}
         vector={vector}
         matrix={matrix}
-        transformedVector={transformedVector}/>
+        transformedVector={transformedVector}
+        units={unit}/>
 
       <button
         className="btn btn-primary position-fixed"

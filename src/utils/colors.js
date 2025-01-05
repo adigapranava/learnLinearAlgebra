@@ -5,6 +5,7 @@ export const COLORS = {
   vectorTransformed: 0xff0000, // Red for transformed vector
   labels: 0xaaaaaa, // Light gray for axis labels
   vectorBreakdown: 0xffffff, // White for vector breakdown components
+  gridTransformed: 0xff00ff, // Magenta for transformed grid
 };
 
 export default COLORS;

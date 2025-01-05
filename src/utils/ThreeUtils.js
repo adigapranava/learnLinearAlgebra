@@ -45,15 +45,15 @@ export const createAxisLineWithStrips = (
 };
 
 // Function to create axis labels
-export const createAxisLabel = (scene, text, position) => {
+export const createAxisLabel = (scene, unit, text, position) => {
   const loader = new FontLoader();
   loader.load(
     "https://threejs.org/examples/fonts/helvetiker_regular.typeface.json",
     (font) => {
       const textGeometry = new TextGeometry(text, {
         font: font,
-        size: 0.3,
-        height: 0.05,
+        size: 0.3 ,
+        height: 0.05 ,
       });
       const textMaterial = new THREE.MeshBasicMaterial({ color: 0xaaaaaa });
       const mesh = new THREE.Mesh(textGeometry, textMaterial);
@@ -75,10 +75,10 @@ export const createGridMesh = (scene, size, divisions, color) => {
 };
 
 // Function to create component lines
-export const createComponentLines = (scene, vector, color) => {
-  const componentX = new THREE.Vector3(vector.x, 0, 0);
-  const componentY = new THREE.Vector3(0, vector.y, 0);
-  const componentZ = new THREE.Vector3(0, 0, vector.z);
+export const createComponentLines = (scene, unit, vector, color) => {
+  const componentX = new THREE.Vector3(vector.x, 0, 0).multiplyScalar(1/unit);
+  const componentY = new THREE.Vector3(0, vector.y, 0).multiplyScalar(1/unit);
+  const componentZ = new THREE.Vector3(0, 0, vector.z).multiplyScalar(1/unit);
 
   const origin = new THREE.Vector3(0, 0, 0);
   const xLine = new THREE.Line(
@@ -95,7 +95,7 @@ export const createComponentLines = (scene, vector, color) => {
   const zLine = new THREE.Line(
     new THREE.BufferGeometry().setFromPoints([
       componentX.clone().add(componentY),
-      vector,
+      vector.clone().multiplyScalar(1/unit),
     ]),
     new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.5 })
   );
@@ -105,16 +105,16 @@ export const createComponentLines = (scene, vector, color) => {
 };
 
 // Function to create a vector arrow
-export const createVectorArrow = (scene, vector, color) => {
+export const createVectorArrow = (scene, unit, vector, color) => {
   const dir = vector.clone().normalize();
-  const length = vector.length();
+  const length = vector.length() / unit;
   const arrowHelper = new THREE.ArrowHelper(
     dir,
     new THREE.Vector3(0, 0, 0),
     length,
     color,
-    0.3,
-    0.2
+    0.03 * vector.length() / unit,
+    0.02 * vector.length() / unit
   );
   scene.add(arrowHelper);
   return arrowHelper;
