@@ -70,7 +70,7 @@ function calculateSpaceAndScale(vector1, vector2) {
   const scale = Math.ceil(range / 10);
 
   // Ensure the length of the space is at least 10 times the scale
-  const spaceLength = Math.max(10 * scale, range);
+  const spaceLength = Math.max(10 * scale, maxValue);
 
   return {
       scale: scale,
