@@ -1,0 +1,9 @@
+h1 {
+    font-family: "Sour Gummy", serif;
+    font-weight: 900;
+    text-shadow: 0px 0px 30px #4bcce6;
+}
+
+.container h1{
+    font-size: 4em;
+}

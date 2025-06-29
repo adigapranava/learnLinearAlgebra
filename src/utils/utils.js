@@ -78,4 +78,36 @@ function calculateSpaceAndScale(vector1, vector2) {
   };
 }
 
-export { parseVectorInput, parseMatrixInput, validateVector, validateMatrix, multiplyVectorMatrix, calculateSpaceAndScale };
+// function calculateSpaceAndScale(vectors) {
+//   // Combine all the values from both vectors
+//   const values = vectors.reduce((acc, vector) => {
+//       acc.push(...vector);
+//       return acc;
+//   }, []);
+
+//   // Calculate the range
+//   const minValue = Math.min(...values);
+//   const maxValue = Math.max(...values);
+//   const range = maxValue - minValue;
+
+//   // Determine the scale, ensuring a minimum of 10 units
+//   const scale = Math.ceil(range / 10);
+
+//   // Ensure the length of the space is at least 10 times the scale
+//   const spaceLength = Math.max(10 * scale, maxValue);
+
+//   return {
+//       scale: scale,
+//       length: spaceLength
+//   };
+// }
+
+const getRandomBrightColor = () => {
+  const getComponent = () => Math.floor(Math.random() * 156) + 100; 
+  const r = getComponent(); // Red component (100–255)
+  const g = getComponent(); // Green component (100–255)
+  const b = getComponent(); // Blue component (100–255)
+  return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
+};
+
+export { parseVectorInput, parseMatrixInput, validateVector, validateMatrix, multiplyVectorMatrix, calculateSpaceAndScale, getRandomBrightColor };

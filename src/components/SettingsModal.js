@@ -80,6 +80,20 @@ const SettingsModal = ({
                   Show Vector Breakdown
                 </label>
               </div>
+
+              {/* Checkbox for Vector as Line */}
+              <div className="form-check">
+                <input
+                  type="checkbox"
+                  className="form-check-input"
+                  id="showVectorAsLineCheckbox"
+                  checked={settings.showVectorAsLine}
+                  onChange={(e) => handleSettingChange('showVectorAsLine', e.target.checked)}
+                />
+                <label className="form-check-label" htmlFor="showVectorAsLineCheckbox">
+                  Show Vector as Line
+                </label>
+              </div>
             </form>
           </div>
           <div className="modal-footer">

@@ -1,4 +1,3 @@
-// threeUtils.js
 import * as THREE from "three";
 import { FontLoader } from "three/examples/jsm/loaders/FontLoader";
 import { TextGeometry } from "three/examples/jsm/geometries/TextGeometry";
@@ -105,17 +104,60 @@ export const createComponentLines = (scene, unit, vector, color) => {
 };
 
 // Function to create a vector arrow
-export const createVectorArrow = (scene, unit, vector, color) => {
-  const dir = vector.clone().normalize();
-  const length = vector.length() / unit;
-  const arrowHelper = new THREE.ArrowHelper(
-    dir,
-    new THREE.Vector3(0, 0, 0),
-    length,
-    color,
-    0.03 * vector.length() / unit,
-    0.02 * vector.length() / unit
-  );
-  scene.add(arrowHelper);
-  return arrowHelper;
+export const createVectorArrow = (
+  scene,
+  unit,
+  vector,
+  color,
+  showVectorAsLine = true,
+  thickness = 0.05, 
+  source = new THREE.Vector3(0, 0, 0) 
+) => {
+  const target = new THREE.Vector3(vector.x, vector.y, vector.z);
+  const direction = target.clone().sub(source);
+  const length = direction.length() / unit;
+
+  if (showVectorAsLine) { 
+    // Head: Create a cone for the arrowhead
+    const headRadius = 0.05 * vector.length() / unit; 
+    const headLength = 0.1 * vector.length() / unit;
+    const shaftGeometry = new THREE.CylinderGeometry(thickness, thickness, length, 8);
+    const shaftMaterial = new THREE.MeshBasicMaterial({ color });
+    const shaft = new THREE.Mesh(shaftGeometry, shaftMaterial);
+
+    // Position the shaft along the vector
+    shaft.position.set(source.x, source.y, source.z);
+    shaft.geometry.translate(0, length / 2, 0);
+
+    const target = new THREE.Vector3(vector.x, vector.y, vector.z);
+    const direction = target.clone().sub(source); 
+    const rotation = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.normalize());
+
+    // Apply the rotation to orient the shaft correctly
+    shaft.rotation.setFromQuaternion(rotation);
+
+    // Head: Create a cone for the arrowhead
+    const headGeometry = new THREE.ConeGeometry(headRadius, headLength, 8);
+    const headMaterial = new THREE.MeshBasicMaterial({ color: '#333' });
+    const head = new THREE.Mesh(headGeometry, headMaterial);
+
+    // // Position the head at the end of the shaft
+    head.geometry.translate(0, -headLength/2, 0);
+    head.position.set(vector.x, vector.y, vector.z);
+    head.rotation.setFromQuaternion(rotation);
+
+    // Add both the shaft and the head to the scene
+    scene.add(shaft);
+    scene.add(head);
+    return {shaft, head}; // Return the arrow group for further manipulations
+  } else {
+    // Create a point at the vector's position
+    const pointGeometry = new THREE.SphereGeometry(0.1, 32, 32); // Small sphere as a point
+    const pointMaterial = new THREE.MeshBasicMaterial({color });
+    const point = new THREE.Mesh(pointGeometry, pointMaterial);
+    point.position.copy(vector); // Position the point at the vector's coordinates
+    scene.add(point);
+    return point; // Return the point for further manipulations
+  }
 };
+
